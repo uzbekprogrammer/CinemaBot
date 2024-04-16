@@ -1,25 +1,32 @@
 import logging
-
+import sqlite3
 from aiogram import types
-from data.config import CHANNELS
+from aiogram.dispatcher.filters import CommandStart
+
+from data.config import CHANNELS, ADMINS
 from keyboards.inline.subscription import check_button
-from loader import bot, dp
+from loader import bot, dp, db
 from utils.misc import subscription
 
 
-@dp.message_handler(commands=['start'])
-async def show_channels(message: types.Message):
-    channels_format = str()
-    for channel in CHANNELS:
-        chat = await bot.get_chat(channel)
-        invite_link = await chat.export_invite_link()
-        # logging.info(invite_link)
-        channels_format += f"👉 <a href='{invite_link}'>{chat.title}</a>\n"
+@dp.message_handler(CommandStart())
+async def bot_start(message: types.Message):
+    name = message.from_user.full_name
+    user_id = message.from_user.id
+    # Foydalanuvchini bazaga qoshamiz
+    try:
+        db.add_user(id=message.from_user.id,
+                    name=name)
+        count = db.count_users()[0]
+        msg = f'{name} bazaga qoshildi. \nBazada {count} ta foydalanuvchi bor.' \
+              f'\nID {user_id}.'
+        await bot.send_message(chat_id=ADMINS[0], text=msg)
 
-    await message.answer(f"Quyidagi kanallarga obuna bo'ling: \n"
-                         f"{channels_format}",
-                         reply_markup=check_button,
-                         disable_web_page_preview=True)
+    except sqlite3.IntegrityError as err:
+        # await bot.send_message(chat_id=ADMINS[0], text=err)
+        pass
+    await message.answer(f"""Assalom alaykum {message.from_user.full_name} botimizga xush kelibsiz.
+ ✍🏻 Kino kodini yuboring.""")
 
 
 @dp.callback_query_handler(text="check_subs")
